@@ -1,6 +1,5 @@
 import enum
 from abc import ABC
-import re
 import sys
 import os
 import re
@@ -59,26 +58,30 @@ class Analyzer:
             self.files = os.listdir(path)
 
     def is_file_belong_python(self):
+        path = Arg().get_input_path_to_file()
         for file_name in self.files:
             if not re.search("\.py$", file_name):
-                files.remove(file_name)
+                self.files.remove(file_name)
             else:
-                files.replace(file_name, path + file_name)
+                self.files = [path + x for x in self.files]
 
     def validate_lines(self):
         for file_path in self.files:
             line_number = 1
-            empty_lines = []
+            empty_lines = {}
             with open(file_path, "r") as f:
                 for line in f:
-                    if self.is_line_empty_blanks(line, file_path):
-                        empty_lines.append(line_number)
+                    if self.is_line_empty_blanks(line):
+                        if file_path not in empty_lines:
+                            empty_lines[file_path] = []
+                        else:
+                            empty_lines[file_path].append(line_number)
                     self.validate_length(line, line_number, file_path)
                     self.validate_indentation(line, line_number, file_path)
                     self.validate_semicolon(line, line_number, file_path)
                     self.validate_two_space_before_comments(line, line_number, file_path)
                     self.validate_is_todo(line, line_number, file_path)
-                    self.validate_for_more_than_two_blanks(empty_lines, file_path)
+                    self.validate_for_more_than_two_blanks(empty_lines[file_path], file_path)
                     line_number += 1
         return Status.ok
 
@@ -160,7 +163,8 @@ class Analyzer:
 
     def get_error_messages(self):
         for file, lines in self.lines_with_message.values():
-            numbers = [int(x) for x in lines.keys()].sort()
+            numbers = [int(x) for x in lines.keys()]
+            numbers.sort()
             [lines.get(str(number)).sort() for number in numbers]
 
             yield [f'{file}: Line {number}: {self.messages.get(message)}'
